@@ -82,8 +82,8 @@ class Bird(Character):
         self.hyper_life = -1
 
 
-        self.HpImage = pg.Surface((500, 500))
-        pg.draw.rect(self.HpImage, (0,255,0), (self.rect.centerx, self.rect.centery,100,10), width=0)
+        self.HpImage = pg.Surface((WIDTH, 30))
+        self.HpRect = pg.draw.rect(self.HpImage, (0,255,0), pg.Rect(0,0,WIDTH,30), width=20)
 
 
     def change_img(self, num: int, screen: pg.Surface):
@@ -111,8 +111,11 @@ class Bird(Character):
         引数1 key_lst：押下キーの真理値リスト
         引数2 screen：画面Surface
         """
-
-        pg.draw.rect(self.HpImage, (0,255,0), (self.rect.centerx, self.rect.centery,500,500), width=0)
+        print(self.HP)
+        self.HpImage = pg.Surface((WIDTH - WIDTH*self.HP/100, 30))
+        self.HpRect = pg.draw.rect(self.HpImage, (0,255,0), pg.Rect(0,0,WIDTH - self.HP,30))
+        # pg.draw.rect(self.HpImage, (0,255,0), (0,0,100,10), width=10)
+        # pg.draw.rect(self.HpImage, (0,255,0), (self.rect.centerx, self.rect.centery,500,500), width=0)
 
         if key_lst[pg.K_LSHIFT]:  # 左のShiftを押すと
             self.speed = 20  # 高速化する
@@ -308,6 +311,9 @@ class Enemy(Character):
         self.rect.centerx +=  3* self.vx
         self.rect.centery +=  3* self.vy
 
+        if self.HP <= 0:
+            self.kill()
+
 class BOSS(Character):
     """
     敵機に関するクラス
@@ -353,6 +359,10 @@ class BOSS(Character):
         self.rect.centery +=  3* self.vy
 
 
+        if self.HP <= 0:
+            self.kill()
+
+
 class Score:
     """
     打ち落とした爆弾，敵機の数をスコアとして表示するクラス
@@ -378,6 +388,7 @@ class Score:
 
 
 def main():
+    
     pg.display.set_caption("KOUKATON SUVIVER")
     
     bg_img = pg.image.load("ex05/fig/haikei.png")
@@ -433,9 +444,9 @@ def main():
                 for i in beam_lst:
                     beams.add(i)
 
-        if tmr > 500:
+        if tmr > 100:
             if BossFlag == False:
-                emys.add(BOSS(500))
+                emys.add(BOSS(100))
                 BossFlag = True
 
         
@@ -443,26 +454,18 @@ def main():
         screen.blit(bg_img, [0, 0])
 
 
-        if tmr%20 == 0:  # 200フレームに1回，敵機を出現させる
+        if tmr%200 == 0:  # 200フレームに1回，敵機を出現させる
             emys.add(Enemy(20))
 
 
-        
-        for emy in pg.sprite.groupcollide(emys, beams, True, True).keys():
-            killFlag = False
-            score.score_up(10)  # 10点アップ
+        # print(pg.sprite.groupcollide(emys, beams, False, True))
+
+        for emy in pg.sprite.groupcollide(emys, beams, False, True).keys():
             emy.HP -= 10
-            
-            exps.add(Explosion(emy, 10))
+            exps.add(Explosion(emy, 10))  # 爆発エフェクト
+            print(emy.HP)
             if emy.HP <= 0:
-                print("aaa")
-                # for emy in pg.sprite.groupcollide(emys, beams, True, True).keys():
-                #     exps.add(Explosion(emy, 100))  # 爆発エフェクト
-                #     score.score_up(10)  # 10点アップ
-                #     bird.change_img(6, screen)  # こうかとん喜びエフェクト
-
-            # print(emy.HP)
-
+                score.score_up(10)
             
 
         for b in pg.sprite.spritecollide(bird, emys, False, False):
@@ -477,6 +480,7 @@ def main():
                 return
             
 
+
         bird.update(key_lst, screen, dtime)
         beams.update()
         beams.draw(screen)
@@ -490,6 +494,11 @@ def main():
         exps.draw(screen)
 
         score.update(screen)
+        
+
+        
+        screen.blit(bird.HpImage, bird.HpRect)
+
         pg.display.update()
         tmr += 1
         dtime = clock.tick(50)/1000
