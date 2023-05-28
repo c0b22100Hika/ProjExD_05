@@ -161,6 +161,9 @@ class Beam(pg.sprite.Sprite):
         """
         # print(f"rad = {rad}")
         super().__init__()
+
+    
+
         self.vx, self.vy = bird.get_direction()
         angle = math.degrees(math.atan2(-self.vy, self.vx))
         self.image = pg.transform.rotozoom(pg.image.load(f"ex05/fig/beam.png"), angle + rad, 2.0)
@@ -178,6 +181,49 @@ class Beam(pg.sprite.Sprite):
         引数 screen：画面Surface
         """
         self.rect.move_ip(+self.speed*self.vx, +self.speed*self.vy)
+        if check_bound(self.rect) != (True, True):
+            self.kill()
+
+class Block(pg.sprite.Sprite):
+    """
+    ビームに関するクラス
+    """
+    def __init__(self, bird: Bird, rad = 0):
+        """
+        ビーム画像Surfaceを生成する
+        引数 bird：ビームを放つこうかとん
+        """
+        # print(f"rad = {rad}")
+        super().__init__()
+
+        
+        # self.HpRect = pg.draw.rect(self.HpImage, (0,255,0), pg.Rect(self.rect.bottomleft[0],self.rect.bottomleft[1],30,30))
+
+        self.vx, self.vy = bird.get_direction()
+        angle = math.degrees(math.atan2(-self.vy, self.vx))
+
+        self.block = pg.Surface((10, 10))
+        self.block.fill((255,255,255))
+
+        self.image = pg.transform.rotozoom(self.block, angle + rad, 2.0)
+        self.image.set_colorkey((0,0,0))
+
+        self.vx = math.cos(math.radians(angle + rad))
+        self.vy = -math.sin(math.radians(angle + rad))
+        self.rect = self.image.get_rect()
+        self.rect.centery = bird.rect.centery + bird.rect.height*self.vy
+        self.rect.centerx = bird.rect.centerx + bird.rect.width*self.vx
+        self.speed = 30
+
+    def update(self,screen):
+        """
+        ビームを速度ベクトルself.vx, self.vyに基づき移動させる
+        引数 screen：画面Surface
+        """
+        self.rect.move_ip(+self.speed*self.vx, +self.speed*self.vy)
+
+        screen.blit(self.image ,self.rect)
+
         if check_bound(self.rect) != (True, True):
             self.kill()
 
@@ -202,6 +248,29 @@ class NeoBeam(pg.sprite.Sprite):
         angles = [start_angle + i * angle_interval for i in range(self.num)]
 
         neo_beams = [Beam(self.bird,rad=angles[i]) for i in range(self.num)]
+        return neo_beams
+    
+class NeoBlock(pg.sprite.Sprite):
+    def __init__(self, bird: Bird, num: int):   # NeoBeamクラスのイニシャライザの引数を，こうかとんbirdとビーム数numとする
+        super().__init__()
+        self.num = num
+        self.bird = bird
+
+    def gen_beams(self):
+        """
+        NeoBeamクラスのgen_beamsメソッドで，
+        ‐50°～+51°の角度の範囲で指定ビーム数の分だけBeamオブジェクトを生成し，
+        リストにappendする → リストを返す
+        """
+        start_angle = -50
+        end_angle = 51
+        
+        range_size = end_angle - start_angle
+        angle_interval = range_size / (self.num-1)
+
+        angles = [start_angle + i * angle_interval for i in range(self.num)]
+
+        neo_beams = [Block(self.bird,rad=angles[i]) for i in range(self.num)]
         return neo_beams
     
 
@@ -281,6 +350,8 @@ class Enemy(Character):
         self.rect.centerx +=  3* self.vx
         self.rect.centery +=  3* self.vy
 
+        if self.HP <= 0:
+            self.HP = 0
 
 
         self.HpImage = pg.Surface(((self.HP/100)*200, 10))
@@ -332,6 +403,11 @@ class BOSS(Character):
         ランダムに決めた停止位置_boundまで降下したら，_stateを停止状態に変更する
         引数 screen：画面Surface
         """
+        if self.HP <= 0:
+            self.HP = 0
+            global gameFlag
+            gameFlag = True
+            self.kill()
 
         self.vx, self.vy = calc_orientation(self.rect, bird.rect)
 
@@ -341,15 +417,8 @@ class BOSS(Character):
         self.HpImage = pg.Surface(((self.HP/100)*500, 50))
         self.HpRect = pg.draw.rect(self.HpImage, (0,0,0), pg.Rect(self.rect.bottomleft[0],self.rect.bottomleft[1],500,50))
         self.HpImage.fill((255,0,0))
-        screen.blit(self.HpImage, self.HpRect)
-
-
-        if self.HP <= 0:
-            global gameFlag
-            gameFlag = True
-            self.kill()
+        screen.blit(self.HpImage, self.HpRect) 
             
-
 
 class Score:
     """
@@ -406,31 +475,16 @@ def main():
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 return 0
-            
-            if event.type == pg.KEYDOWN and event.key == pg.K_SPACE and key_lst[pg.K_LSHIFT] :
-                # print("f_key ON")
-                """
-                発動条件が満たされたら，NeoBeamクラスのイニシャライザにこうかとんと
-                ビーム数を渡し，戻り値のリストをBeamグループに追加する
-                """
-                n_beams = NeoBeam(bird,110)
-                beam_lst = n_beams.gen_beams()
-                # print(f"list in {beam_lst}")
-                for i in beam_lst:
-                    beams.add(i)
-            
-            elif event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
-                beams.add(Beam(bird))
 
-
-        if tmr%20 == 0:
+        if tmr%10 == 0:
             if score.score < 30:
-                beams.add(Beam(bird))
+                beams.add(Block(bird))
             else:
-                n_beams = NeoBeam(bird,3 + score.score%10)
+                n_beams = NeoBlock(bird,3 + score.score%10)
                 beam_lst = n_beams.gen_beams()
                 for i in beam_lst:
                     beams.add(i)
+
 
         if tmr > 200:
             if tmr % 400:
@@ -449,7 +503,7 @@ def main():
         # print(pg.sprite.groupcollide(emys, beams, False, True))
 
         for emy in pg.sprite.groupcollide(emys, beams, False, True).keys():
-            emy.HP -= 10
+            emy.HP -= 7
             
             exps.add(Explosion(emy, 10))  # 爆発エフェクト
             # print(emy.HP)
@@ -510,7 +564,7 @@ def main():
         score.update(screen)        
         screen.blit(bird.HpImage, bird.HpRect)
 
-        beams.update()
+        beams.update(screen)
         beams.draw(screen)
         
         pg.display.update()
