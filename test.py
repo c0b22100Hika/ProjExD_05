@@ -6,12 +6,10 @@ from typing import Any
 
 import pygame as pg
 
-
 WIDTH = 1600  # ゲームウィンドウの幅
 HEIGHT = 900  # ゲームウィンドウの高さ
 
 gameFlag = False
-
 
 def check_bound(obj: pg.Rect) -> tuple[bool, bool]:
     """
@@ -39,10 +37,12 @@ def calc_orientation(org: pg.Rect, dst: pg.Rect) -> tuple[float, float]:
     return x_diff/norm, y_diff/norm
 
 class Character(pg.sprite.Sprite):
+    """
+    キャラクターたちを管理するクラス
+    """
     def __init__(self,HP):
         super().__init__()
         self.HP = HP
-
 
 class Bird(Character):
     """
@@ -83,10 +83,8 @@ class Bird(Character):
         self.state = "normal"
         self.hyper_life = -1
 
-
         self.HpImage = pg.Surface((WIDTH, 30))
         self.HpRect = pg.draw.rect(self.HpImage, (0,255,0), pg.Rect(0,0,WIDTH,30))
-
 
     def change_img(self, num: int, screen: pg.Surface):
         """
@@ -109,15 +107,13 @@ class Bird(Character):
 
     def update(self, key_lst: list[bool], screen: pg.Surface, dtime):
         """
-        押下キーに応じてこうかとんを移動させる
+        押下キーに応じてこうかとんを移動させる（ASDW）
         引数1 key_lst：押下キーの真理値リスト
         引数2 screen：画面Surface
         """
-        # print(self.HP)
+        
         self.HpImage = pg.Surface(((self.HP/100)*WIDTH, 30))
         self.HpRect = pg.draw.rect(self.HpImage, (0,255,0), pg.Rect(0,0,WIDTH,30))
-        # pg.draw.rect(self.HpImage, (0,255,0), (0,0,100,10), width=10)
-        # pg.draw.rect(self.HpImage, (0,255,0), (self.rect.centerx, self.rect.centery,500,500), width=0)
 
         if key_lst[pg.K_LSHIFT]:  # 左のShiftを押すと
             self.speed = 20  # 高速化する
@@ -150,39 +146,6 @@ class Bird(Character):
     def get_direction(self) -> tuple[int, int]:
         return self.dire
 
-class Beam(pg.sprite.Sprite):
-    """
-    ビームに関するクラス
-    """
-    def __init__(self, bird: Bird, rad = 0):
-        """
-        ビーム画像Surfaceを生成する
-        引数 bird：ビームを放つこうかとん
-        """
-        # print(f"rad = {rad}")
-        super().__init__()
-
-    
-
-        self.vx, self.vy = bird.get_direction()
-        angle = math.degrees(math.atan2(-self.vy, self.vx))
-        self.image = pg.transform.rotozoom(pg.image.load(f"ex05/fig/beam.png"), angle + rad, 2.0)
-        self.vx = math.cos(math.radians(angle + rad))
-        self.vy = -math.sin(math.radians(angle + rad))
-        self.rect = self.image.get_rect()
-        self.rect.centery = bird.rect.centery + bird.rect.height*self.vy
-        self.rect.centerx = bird.rect.centerx + bird.rect.width*self.vx
-        self.speed = 20
-
-
-    def update(self):
-        """
-        ビームを速度ベクトルself.vx, self.vyに基づき移動させる
-        引数 screen：画面Surface
-        """
-        self.rect.move_ip(+self.speed*self.vx, +self.speed*self.vy)
-        if check_bound(self.rect) != (True, True):
-            self.kill()
 
 class Block(pg.sprite.Sprite):
     """
@@ -195,10 +158,6 @@ class Block(pg.sprite.Sprite):
         """
         # print(f"rad = {rad}")
         super().__init__()
-
-        
-        # self.HpRect = pg.draw.rect(self.HpImage, (0,255,0), pg.Rect(self.rect.bottomleft[0],self.rect.bottomleft[1],30,30))
-
         self.vx, self.vy = bird.get_direction()
         angle = math.degrees(math.atan2(-self.vy, self.vx))
 
@@ -226,31 +185,11 @@ class Block(pg.sprite.Sprite):
 
         if check_bound(self.rect) != (True, True):
             self.kill()
-
-class NeoBeam(pg.sprite.Sprite):
-    def __init__(self, bird: Bird, num: int):   # NeoBeamクラスのイニシャライザの引数を，こうかとんbirdとビーム数numとする
-        super().__init__()
-        self.num = num
-        self.bird = bird
-
-    def gen_beams(self):
-        """
-        NeoBeamクラスのgen_beamsメソッドで，
-        ‐50°～+51°の角度の範囲で指定ビーム数の分だけBeamオブジェクトを生成し，
-        リストにappendする → リストを返す
-        """
-        start_angle = -50
-        end_angle = 51
-        
-        range_size = end_angle - start_angle
-        angle_interval = range_size / (self.num-1)
-
-        angles = [start_angle + i * angle_interval for i in range(self.num)]
-
-        neo_beams = [Beam(self.bird,rad=angles[i]) for i in range(self.num)]
-        return neo_beams
     
 class NeoBlock(pg.sprite.Sprite):
+    """
+    引数に与えられた量のブロックを扇形に生成する
+    """
     def __init__(self, bird: Bird, num: int):   # NeoBeamクラスのイニシャライザの引数を，こうかとんbirdとビーム数numとする
         super().__init__()
         self.num = num
@@ -273,8 +212,6 @@ class NeoBlock(pg.sprite.Sprite):
         neo_beams = [Block(self.bird,rad=angles[i]) for i in range(self.num)]
         return neo_beams
     
-
-
 class Explosion(pg.sprite.Sprite):
     """
     爆発に関するクラス
@@ -313,14 +250,11 @@ class Enemy(Character):
     imgs[1] = pg.transform.scale(imgs[1],(random.randint(90,150),random.randint(90,150)))
     imgs[2] = pg.transform.scale(imgs[2],(random.randint(90,150),random.randint(90,150)))
     
-    
     def __init__(self,HP):
         super().__init__(HP)
 
         self.image = random.choice(__class__.imgs)
         self.rect = self.image.get_rect()
-        # cx = random.randint(WIDTH-50,WIDTH+50)
-        # cy = random.randint(HEIGHT-50, HEIGHT+50)
         
         while(True):
             cx = random.randint(0-50,WIDTH+50)
@@ -329,14 +263,11 @@ class Enemy(Character):
             if ((cy < 0) or (cy > HEIGHT)):
                 break
         
-
         self.rect.centerx = cx
         self.rect.centery = cy
 
         self.HpImage = pg.Surface((200, 10))
         self.HpRect = pg.draw.rect(self.HpImage, (0,255,0), pg.Rect(self.rect.bottomleft[0],self.rect.bottomleft[1],200,10))
-        
-
 
     def update(self, bird:Bird, screen):
         """
@@ -353,7 +284,6 @@ class Enemy(Character):
         if self.HP <= 0:
             self.HP = 0
 
-
         self.HpImage = pg.Surface(((self.HP/100)*200, 10))
         self.HpRect = pg.draw.rect(self.HpImage, (0,0,0), pg.Rect(self.rect.bottomleft[0],self.rect.bottomleft[1],200,10))
         self.HpImage.fill((255,0,0))
@@ -364,23 +294,18 @@ class Enemy(Character):
 
 class BOSS(Character):
     """
-    敵機に関するクラス
+    BOSSに関するクラス
     """
     imgs = [pg.image.load(f"ex05/fig/alien{i}.png") for i in range(1, 4)]
 
     imgs[0] = pg.transform.scale(imgs[0],(random.randint(400,600),random.randint(400,600)))
     imgs[1] = pg.transform.scale(imgs[1],(random.randint(400,600),random.randint(400,600)))
     imgs[2] = pg.transform.scale(imgs[2],(random.randint(400,600),random.randint(400,600)))
-
-    
     
     def __init__(self,HP):
         super().__init__(HP)
-
         self.image = random.choice(__class__.imgs)
         self.rect = self.image.get_rect()
-        # cx = random.randint(WIDTH-50,WIDTH+50)
-        # cy = random.randint(HEIGHT-50, HEIGHT+50)
         
         while(True):
             cx = random.randint(0-50,WIDTH+50)
@@ -388,7 +313,6 @@ class BOSS(Character):
             
             if ((cy < 0) or (cy > HEIGHT)):
                 break
-        
 
         self.rect.centerx = cx
         self.rect.centery = cy
@@ -442,9 +366,10 @@ class Score:
         screen.blit(self.image, self.rect)
 
 
-
-
 def main():
+    """
+    メインプログラム
+    """
     
     pg.display.set_caption("KOUKATON SUVIVER")
     
@@ -468,7 +393,6 @@ def main():
     dtime  = 0
 
     BossFlag = False
-    killFlag = False
 
     while True:
         key_lst = pg.key.get_pressed()
@@ -476,6 +400,7 @@ def main():
             if event.type == pg.QUIT:
                 return 0
 
+        # 攻撃の頻度
         if tmr%10 == 0:
             if score.score < 30:
                 beams.add(Block(bird))
@@ -485,7 +410,7 @@ def main():
                 for i in beam_lst:
                     beams.add(i)
 
-
+        # 一定時間たつとBOSSが出現する
         if tmr > 200:
             if tmr % 400:
                 if BossFlag == False:
@@ -494,27 +419,26 @@ def main():
             
         screen.blit(bg_img, [0, 0])
 
-
-        if tmr%50 == 0:  # 200フレームに1回，敵機を出現させる
+        # 200フレームに1回，敵機を出現させる
+        if tmr%50 == 0: 
             emys.add(Enemy(20))
             
 
-
-        # print(pg.sprite.groupcollide(emys, beams, False, True))
-
+        # 攻撃と敵の接触処理
         for emy in pg.sprite.groupcollide(emys, beams, False, True).keys():
             emy.HP -= 7
-            
             exps.add(Explosion(emy, 10))  # 爆発エフェクト
             # print(emy.HP)
             if emy.HP <= 0:
                 score.score_up(10)
             
 
+        # 敵と自分の接触処理
         for b in pg.sprite.spritecollide(bird, emys, False, False):
             bird.HP -= 0.6
             # print(bird.HP)
 
+            # ゲームオーバー処理
             if bird.HP <= 0:
                 font = pg.font.Font(None, 250)
                 image = font.render(f"Game Over", 0, (255,0,0))
@@ -529,6 +453,7 @@ def main():
                 return
             
         
+        # ゲームクリアの処理
         if gameFlag == True:
             # game clear
             font = pg.font.Font(None, 250)
@@ -537,7 +462,6 @@ def main():
             img_rct.center = (WIDTH/2, HEIGHT/2)
             screen.blit(image, img_rct)
 
-
             bird.change_img(9, screen)
             score.update(screen)
             screen.blit(bird.HpImage, bird.HpRect)
@@ -545,21 +469,17 @@ def main():
             time.sleep(2)
             return
             
-        print(gameFlag)
 
-
+        # 描画処理
         bird.update(key_lst, screen, dtime)
         
-
         emys.draw(screen)
         emys.update(bird,screen)
         
-
         bombs.update()
         bombs.draw(screen)
         exps.update()
         exps.draw(screen)
-
 
         score.update(screen)        
         screen.blit(bird.HpImage, bird.HpRect)
