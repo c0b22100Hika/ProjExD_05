@@ -386,7 +386,6 @@ def main():
     exps = pg.sprite.Group()
     emys = pg.sprite.Group()
 
-
     tmr = 0
     clock = pg.time.Clock()
 
@@ -394,6 +393,7 @@ def main():
 
     BossFlag = False
 
+    #メインループ
     while True:
         key_lst = pg.key.get_pressed()
         for event in pg.event.get():
@@ -493,12 +493,8 @@ def main():
         # clock.tick(50)
 
 
-
 if __name__ == "__main__":
     pg.init()
     main()
     pg.quit()
     sys.exit()
-
-
-
